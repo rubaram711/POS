@@ -1,0 +1,1263 @@
+import 'dart:typed_data';
+import 'package:flutter/material.dart';
+import 'package:get/get.dart';
+import 'package:pos_project/Screens/Transfers/print_transfer_in.dart';
+import '../../../Controllers/home_controller.dart';
+import '../../../Widgets/page_title.dart';
+import '../../../Widgets/reusable_btn.dart';
+import '../../../Widgets/reusable_text_field.dart';
+import '../../../const/Sizes.dart';
+import '../../../const/colors.dart';
+import '../../Backend/Warehouses/get_warehouse_qty.dart';
+import '../../Backend/Transfers/Transfer_out/add_transfer_out.dart';
+import '../../Backend/Transfers/Transfer_out/get_data_create_transfer_out.dart';
+import '../../Controllers/transfer_controller.dart';
+import '../../Controllers/warehouse_controller.dart';
+import '../../Locale_Memory/save_user_info_locally.dart';
+import '../../Widgets/TransferWidgets/reusable_show_info_card.dart';
+import '../../Widgets/TransferWidgets/reusable_time_line_tile.dart';
+import '../../Widgets/TransferWidgets/under_item_btn.dart';
+import '../../Widgets/custom_snak_bar.dart';
+import '../../Widgets/dialog_drop_menu.dart';
+import '../../Widgets/reusable_add_card.dart';
+import '../../Widgets/reusable_more.dart';
+import '../../Widgets/table_title.dart';
+// ignore: depend_on_referenced_packages
+import 'package:intl/intl.dart';
+
+class TransferOut extends StatefulWidget {
+  const TransferOut({super.key});
+
+  @override
+  State<TransferOut> createState() => _TransferOutState();
+}
+
+class _TransferOutState extends State<TransferOut> {
+  TextEditingController refController = TextEditingController();
+  TextEditingController dateController = TextEditingController();
+
+  late Uint8List imageFile;
+  int currentStep = 0;
+  int selectedTabIndex = 0;
+
+  List tabsList = [
+    'order_lines',
+    'other_information',
+  ];
+  String? selectedDestWrhs = '';
+  final TransferController transferController = Get.find();
+  final HomeController homeController = Get.find();
+  final WarehouseController warehouseController = Get.find();
+  int progressVar = 0;
+  bool isInfoFetched = false;
+  String transferNumber = '';
+  getFieldsForCreateTransferFromBack() async {
+      currentStep = 0;
+      selectedTabIndex = 0;
+      selectedDestWrhs = '';
+      progressVar = 0;
+      transferNumber = '';
+      transferController.transferToControllerInTransferOut.text = '';
+      transferController.transferFromControllerInTransferOut.text = '';
+      transferController.setTransferToIdInTransferOut('');
+      transferController.setTransferFromIdInTransferOut('');
+    var p = await getTransferOutDataForCreate();
+    transferNumber = p['transferNumber'];
+    if ('$p' != '[]') {
+      setState(() {
+        transferNumber = '${p['transferNumber']}';
+        isInfoFetched = true;
+      });
+    }
+  }
+
+  setSourceWarehouse() async {
+    String warehouseId = await getWarehouseIdFromPref();
+    transferController.setTransferFromIdInTransferOut(warehouseId);
+    transferController
+        .getAllProductsFromBack(transferController.transferFromIdInTransferOut);
+  }
+
+  @override
+  void initState() {
+    dateController.text = DateFormat('yyyy-MM-dd').format(DateTime.now());
+    transferController.isSubmitAndPreviewClicked = false;
+    getFieldsForCreateTransferFromBack();
+    setSourceWarehouse();
+    warehouseController.getWarehousesFromBack();
+    transferController.initialTransferOut();
+    transferController.rowsInListViewInTransferOut = [];
+    transferController.listViewLengthInTransferOut = 50;
+    super.initState();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return isInfoFetched
+        ? GetBuilder<TransferController>(builder: (transferCont) {
+            return Container(
+              padding: EdgeInsets.symmetric(
+                  horizontal: MediaQuery.of(context).size.width * 0.02),
+              height: MediaQuery.of(context).size.height * 0.85,
+              child: SingleChildScrollView(
+                child: Column(
+                  children: [
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.start,
+                      children: [
+                        InkWell(
+                          onTap: () async {
+                            homeController.selectedTab.value = 'transfers';
+                          },
+                          child: Icon(Icons.arrow_back,
+                              size: 22,
+                              // color: Colors.grey,
+                              color: Primary.primary),
+                        ),
+                        gapW10,
+                        PageTitle(text: 'transfer_out'.tr),
+                      ],
+                    ),
+                    gapH16,
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      children: [
+                        Row(
+                          children: [
+                            UnderTitleBtn(
+                                text: 'preview'.tr,
+                                onTap: () {
+                                  // setState(() {
+                                  //   progressVar += 1;
+                                  // });
+                                  bool isThereItemsEmpty = false;
+                                  for (var map in transferCont
+                                      .rowsInListViewInTransferOut) {
+                                    if (map!["itemId"] == '' ||
+                                        map!["qty"] == '' ||
+                                        map!["qty"] == '0') {
+                                      setState(() {
+                                        isThereItemsEmpty = true;
+                                      });
+                                      break;
+                                    }
+                                  }
+                                  if (transferController
+                                          .transferToIdInTransferOut ==
+                                      transferController
+                                          .transferFromIdInTransferOut) {
+                                    CommonWidgets.snackBar('error',
+                                        'The source warehouse  must not be the same as destination warehouse');
+                                  } else if (isThereItemsEmpty) {
+                                    CommonWidgets.snackBar('error',
+                                        'check all order lines and enter the required fields');
+                                  } else {
+                                    if (transferController
+                                            .transferToIdInTransferOut !=
+                                        '') {
+                                      Navigator.push(context, MaterialPageRoute(
+                                          builder: (BuildContext context) {
+                                        return PrintTransferIn(
+                                          isInTransferOut: true,
+                                          transferNumber: transferNumber,
+                                          receivedDate: '',
+                                          creationDate: dateController.text,
+                                          ref: refController.text,
+                                          transferTo: selectedDestWrhs ?? '',
+                                          receivedUser: '',
+                                          senderUser: homeController.useName,
+                                          status: 'sent',
+                                          transferFrom: warehouseController
+                                                  .warehousesNameList[
+                                              warehouseController
+                                                  .warehouseIdsList
+                                                  .indexOf(transferController
+                                                      .transferFromIdInTransferOut)],
+                                          rowsInListViewInTransfer: transferCont
+                                              .rowsInListViewInTransferOut,
+                                        );
+                                      }));
+                                    } else {
+                                      CommonWidgets.snackBar('error',
+                                          'you must choose warehouses first');
+                                    }
+                                  }
+                                }),
+                            UnderTitleBtn(
+                                text: 'submit_and_preview'.tr,
+                                onTap: () async {
+                                  bool isThereItemsEmpty = false;
+                                  for (var map in transferCont
+                                      .rowsInListViewInTransferOut) {
+                                    if (map!["itemId"] == '' ||
+                                        map!["qty"] == '' ||
+                                        map!["qty"] == '0') {
+                                      setState(() {
+                                        isThereItemsEmpty = true;
+                                      });
+                                      break;
+                                    }
+                                  }
+                                  if (transferController
+                                          .transferToIdInTransferOut ==
+                                      transferController
+                                          .transferFromIdInTransferOut) {
+                                    CommonWidgets.snackBar('error',
+                                        'The source warehouse  must not be the same as destination warehouse');
+                                  } else if (isThereItemsEmpty) {
+                                    CommonWidgets.snackBar('error',
+                                        'check all order lines and enter the required fields');
+                                  } else {
+                                    var res = await addTransferOut(
+                                        transferController
+                                            .transferToIdInTransferOut,
+                                        transferController
+                                            .transferFromIdInTransferOut,
+                                        refController.text,
+                                        '',
+                                        dateController.text,
+                                        transferController
+                                            .rowsInListViewInTransferOut);
+                                    if (res['success'] == true) {
+                                      transferCont
+                                          .setIsSubmitAndPreviewClicked(true);
+                                      CommonWidgets.snackBar(
+                                          'Success', res['message']);
+                                      // ignore: use_build_context_synchronously
+                                      Navigator.push(context, MaterialPageRoute(
+                                          builder: (BuildContext context) {
+                                        return PrintTransferIn(
+                                          isInTransferOut: true,
+                                          transferNumber: transferNumber,
+                                          receivedDate: '',
+                                          creationDate: dateController.text,
+                                          ref: refController.text,
+                                          transferTo: selectedDestWrhs ?? '',
+                                          receivedUser: '',
+                                          senderUser: homeController.useName,
+                                          status: 'sent',
+                                          transferFrom: warehouseController
+                                                  .warehousesNameList[
+                                              warehouseController
+                                                  .warehouseIdsList
+                                                  .indexOf(transferController
+                                                      .transferFromIdInTransferOut)],
+                                          rowsInListViewInTransfer: transferCont
+                                              .rowsInListViewInTransferOut,
+                                        );
+                                      }));
+                                    } else {
+                                      CommonWidgets.snackBar('error',
+                                          res['message'] ?? 'error'.tr);
+                                    }
+                                  }
+                                }),
+                          ],
+                        ),
+                        Row(
+                          children: [
+                            ReusableTimeLineTile(
+                                id: 0,
+                                progressVar: progressVar,
+                                isFirst: true,
+                                isLast: false,
+                                isPast: true,
+                                text: 'processing'.tr),
+                            ReusableTimeLineTile(
+                                id: 1,
+                                progressVar: progressVar,
+                                isFirst: false,
+                                isLast: false,
+                                isPast: false,
+                                text: 'pending'.tr),
+                            ReusableTimeLineTile(
+                              id: 2,
+                              progressVar: progressVar,
+                              isFirst: false,
+                              isLast: true,
+                              isPast: false,
+                              text: 'received'.tr,
+                            ),
+                          ],
+                        )
+                      ],
+                    ),
+                    // Screenshot(
+                    //   controller: screenshotController,
+                    //   child:
+                    Column(
+                      // key: _captureKey,
+                      children: [
+                        gapH16,
+                        Container(
+                          padding: const EdgeInsets.symmetric(
+                              horizontal: 20, vertical: 20),
+                          decoration: BoxDecoration(
+                              border: Border.all(color: Others.divider),
+                              borderRadius:
+                                  const BorderRadius.all(Radius.circular(9))),
+                          child: Row(
+                            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              SizedBox(
+                                width: homeController.isTablet
+                                    ? MediaQuery.of(context).size.width * 0.47
+                                    : MediaQuery.of(context).size.width * 0.35,
+                                child: Column(
+                                  mainAxisAlignment: MainAxisAlignment.start,
+                                  children: [
+                                    Row(
+                                      children: [
+                                        isInfoFetched
+                                            ? Text(transferNumber,
+                                                style: TextStyle(
+                                                    fontWeight: FontWeight.bold,
+                                                    fontSize: 20,
+                                                    color: TypographyColor
+                                                        .titleTable))
+                                            : const CircularProgressIndicator(),
+                                        SizedBox(
+                                          width: MediaQuery.of(context)
+                                                  .size
+                                                  .width *
+                                              0.05,
+                                        ),
+                                        SizedBox(
+                                          width: homeController.isTablet
+                                              ? MediaQuery.of(context)
+                                                      .size
+                                                      .width *
+                                                  0.25
+                                              : MediaQuery.of(context)
+                                                      .size
+                                                      .width *
+                                                  0.18,
+                                          child: Row(
+                                            children: [
+                                              Text('${'ref'.tr}:'),
+                                              DialogTextFieldWithoutText(
+                                                textEditingController:
+                                                    refController,
+                                                hint: 'manual_reference'.tr,
+                                                textFieldWidth:
+                                                    homeController.isTablet
+                                                        ? MediaQuery.of(context)
+                                                                .size
+                                                                .width *
+                                                            0.2
+                                                        : MediaQuery.of(context)
+                                                                .size
+                                                                .width *
+                                                            0.15,
+                                                validationFunc: (val) {},
+                                                onChangedFunc: (val) {},
+                                                onIconClickedFunc: () {},
+                                                onCloseIconClickedFunc: () {},
+                                              ),
+                                            ],
+                                          ),
+                                        ),
+                                      ],
+                                    ),
+                                    gapH16,
+                                    Row(
+                                      mainAxisAlignment:
+                                          MainAxisAlignment.spaceBetween,
+                                      children: [
+                                        Text('${'transfer_to'.tr}*'),
+                                        GetBuilder<WarehouseController>(
+                                            builder: (cont) {
+                                          return DropdownMenu<String>(
+                                            width: MediaQuery.of(context)
+                                                    .size
+                                                    .width *
+                                                0.25,
+                                            // requestFocusOnTap: false,
+                                            enableSearch: true,
+                                            controller: transferCont
+                                                .transferToControllerInTransferOut,
+                                            hintText: '${'search'.tr}...',
+                                            inputDecorationTheme:
+                                                InputDecorationTheme(
+                                              // filled: true,
+                                              hintStyle: const TextStyle(
+                                                  fontStyle: FontStyle.italic),
+                                              contentPadding:
+                                                  const EdgeInsets.fromLTRB(
+                                                      20, 0, 25, 5),
+                                              // outlineBorder: BorderSide(color: Colors.black,),
+                                              enabledBorder: OutlineInputBorder(
+                                                borderSide: BorderSide(
+                                                    color: Primary.primary
+                                                        .withAlpha((0.2 * 255).toInt()),
+                                                    width: 1),
+                                                borderRadius:
+                                                    const BorderRadius.all(
+                                                        Radius.circular(9)),
+                                              ),
+                                              focusedBorder: OutlineInputBorder(
+                                                borderSide: BorderSide(
+                                                    color: Primary.primary
+                                                        .withAlpha((0.4 * 255).toInt()),
+                                                    width: 2),
+                                                borderRadius:
+                                                    const BorderRadius.all(
+                                                        Radius.circular(9)),
+                                              ),
+                                            ),
+                                            // menuStyle: ,
+                                            menuHeight: 250,
+                                            dropdownMenuEntries: cont
+                                                .warehousesNameList
+                                                .map<DropdownMenuEntry<String>>(
+                                                    (String option) {
+                                              return DropdownMenuEntry<String>(
+                                                value: option,
+                                                label: option,
+                                              );
+                                            }).toList(),
+                                            enableFilter: true,
+                                            onSelected: (String? val) async {
+                                              // transferCont.clearList();
+                                              //todo when change list view all this qty in dest will change
+                                              // transferCont
+                                              //     .setListViewLengthInTransferOut(
+                                              //         50);
+                                              setState(() {
+                                                selectedDestWrhs = val!;
+                                              });
+                                              var index = cont
+                                                  .warehousesNameList
+                                                  .indexOf(val!);
+                                              transferCont
+                                                  .setTransferToIdInTransferOut(
+                                                      '${cont.warehouseIdsList[index]}');
+                                              for (int i = 0;
+                                                  i <
+                                                      transferCont
+                                                          .rowsInListViewInTransferOut
+                                                          .length;
+                                                  i++) {
+                                                var p = await getQTyOfItemInWarehouse(
+                                                    transferCont
+                                                            .rowsInListViewInTransferOut[
+                                                        i]['itemId'],
+                                                    transferController
+                                                        .transferToIdInTransferOut);
+                                                if ('$p' != '[]') {
+                                                  setState(() {
+                                                    transferCont
+                                                            .rowsInListViewInTransferOut[i]
+                                                        [
+                                                        'qtyOnHandPackages'] = p[
+                                                            'qtyOnHandPackages'] ??
+                                                        '0 ${p['item']['packageUnitName'] ?? ''}';
+                                                  });
+                                                }
+                                              }
+                                            },
+                                          );
+                                        }),
+                                      ],
+                                    ),
+                                  ],
+                                ),
+                              ),
+                              SizedBox(
+                                width: MediaQuery.of(context).size.width * 0.4,
+                                child: Column(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  mainAxisAlignment:
+                                      MainAxisAlignment.spaceBetween,
+                                  children: [
+                                    SizedBox(
+                                      width: homeController.isTablet
+                                          ? MediaQuery.of(context).size.width *
+                                              0.35
+                                          : MediaQuery.of(context).size.width *
+                                              0.25,
+                                      child: Row(
+                                        mainAxisAlignment:
+                                            MainAxisAlignment.spaceBetween,
+                                        children: [
+                                          Text('date'.tr),
+                                          DialogDateTextField(
+                                            textEditingController:
+                                                dateController,
+                                            text: '',
+                                            textFieldWidth:
+                                                homeController.isTablet
+                                                    ? MediaQuery.of(context)
+                                                            .size
+                                                            .width *
+                                                        0.25
+                                                    : MediaQuery.of(context)
+                                                            .size
+                                                            .width *
+                                                        0.15,
+                                            validationFunc: (val) {},
+                                            onChangedFunc: (val) {},
+                                            onDateSelected: (value) {
+                                              dateController.text = value;
+                                            },
+                                          ),
+                                        ],
+                                      ),
+                                    ),
+                                    gapH16,
+                                    Text('${'total_qty'.tr}: ')
+                                  ],
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                        gapH16,
+                        Row(
+                          mainAxisAlignment: MainAxisAlignment.start,
+                          children: [
+                            Wrap(
+                                spacing: 0.0,
+                                direction: Axis.horizontal,
+                                children: tabsList
+                                    .map((element) => _buildTabChipItem(
+                                        element, tabsList.indexOf(element)))
+                                    .toList()),
+                          ],
+                        ),
+                        // tabsContent[selectedTabIndex],
+                        selectedTabIndex == 0
+                            ? Column(
+                                children: [
+                                  Container(
+                                    padding: const EdgeInsets.symmetric(
+                                        // horizontal:
+                                        // MediaQuery.of(context).size.width *
+                                        //     0.01,
+                                        vertical: 15),
+                                    decoration: BoxDecoration(
+                                        color: Primary.primary,
+                                        borderRadius: const BorderRadius.all(
+                                            Radius.circular(6))),
+                                    child: Row(
+                                      mainAxisAlignment:
+                                          MainAxisAlignment.spaceEvenly,
+                                      children: [
+                                        TableTitle(
+                                          text: 'item'.tr,
+                                          width: MediaQuery.of(context)
+                                                  .size
+                                                  .width *
+                                              0.12,
+                                        ),
+                                        TableTitle(
+                                          text: 'description'.tr,
+                                          width: MediaQuery.of(context)
+                                                  .size
+                                                  .width *
+                                              0.2,
+                                        ),
+                                        TableTitle(
+                                          text: 'qty_available_at_src_wrhs'.tr,
+                                          width: MediaQuery.of(context)
+                                                  .size
+                                                  .width *
+                                              0.15,
+                                        ),
+                                        // TableTitle(
+                                        //   text: 'pack'.tr,
+                                        //   width: MediaQuery.of(context).size.width *
+                                        //       0.03,
+                                        // ),
+                                        TableTitle(
+                                          text: 'qty_available_at_dest_wrhs'.tr,
+                                          width: MediaQuery.of(context)
+                                                  .size
+                                                  .width *
+                                              0.15,
+                                        ),
+                                        // TableTitle(
+                                        //   text: 'pack'.tr,
+                                        //   width: MediaQuery.of(context).size.width *
+                                        //       0.03,
+                                        // ),
+                                        TableTitle(
+                                          text: 'qty_to_trx'.tr,
+                                          width: MediaQuery.of(context)
+                                                  .size
+                                                  .width *
+                                              0.1,
+                                        ),
+                                        TableTitle(
+                                          text: 'pack'.tr,
+                                          width: MediaQuery.of(context)
+                                                  .size
+                                                  .width *
+                                              0.1,
+                                        ),
+                                        TableTitle(
+                                          text: 'more_options'.tr,
+                                          width: MediaQuery.of(context)
+                                                  .size
+                                                  .width *
+                                              0.1,
+                                        ),
+                                      ],
+                                    ),
+                                  ),
+                                  Container(
+                                    padding: EdgeInsets.symmetric(
+                                        horizontal:
+                                            MediaQuery.of(context).size.width *
+                                                0.01),
+                                    decoration: const BoxDecoration(
+                                      borderRadius: BorderRadius.only(
+                                          bottomLeft: Radius.circular(6),
+                                          bottomRight: Radius.circular(6)),
+                                      color: Colors.white,
+                                    ),
+                                    child: Column(
+                                      crossAxisAlignment:
+                                          CrossAxisAlignment.start,
+                                      children: [
+                                        SizedBox(
+                                          height: transferCont
+                                              .listViewLengthInTransferOut,
+                                          child: ListView.builder(
+                                            padding: const EdgeInsets.symmetric(
+                                                // horizontal:  MediaQuery.of(context).size.width *
+                                                //     0.01,
+                                                vertical: 10),
+                                            itemCount: transferCont
+                                                .rowsInListViewInTransferOut
+                                                .length,
+                                            itemBuilder: (context, index) =>
+                                                ReusableItemRow(
+                                              index: index,
+                                              info: transferCont
+                                                      .rowsInListViewInTransferOut[
+                                                  index],
+                                            ),
+                                            // itemCount: transferCont.orderLinesInTransferOutList.keys.toList()
+                                            //     .length, //products is data from back res
+                                            // itemBuilder: (context, index) {
+                                            //   var keys=transferCont.orderLinesInTransferOutList.keys.toList();
+                                            //   return transferCont.orderLinesInTransferOutList[keys[index]];}
+                                            //     Row(
+                                            //   children: [
+                                            //     Container(
+                                            //       width:  20,// MediaQuery.of(context).size.width * 0.03,
+                                            //       height: 20,
+                                            //       margin:
+                                            //       const EdgeInsets.symmetric(
+                                            //           vertical: 15),
+                                            //       decoration: const BoxDecoration(
+                                            //         image: DecorationImage(
+                                            //           image: AssetImage(
+                                            //               'assets/images/newRow.png'),
+                                            //           fit: BoxFit.contain,
+                                            //         ),
+                                            //       ),
+                                            //     ),
+                                            //     cont.orderLinesInTransferOutList[index],
+                                            //     SizedBox(
+                                            //       width: MediaQuery.of(context)
+                                            //           .size
+                                            //           .width *
+                                            //           0.035,
+                                            //       child: const ReusableMore(
+                                            //         itemsList: [],
+                                            //       ),
+                                            //     ),
+                                            //     SizedBox(
+                                            //       width: MediaQuery.of(context)
+                                            //           .size
+                                            //           .width *
+                                            //           0.035,
+                                            //       child: InkWell(
+                                            //         onTap: () {
+                                            //           setState(() {
+                                            //             cont.removeFromOrderLinesInTransferOutList(
+                                            //                 index);
+                                            //             listViewLength =
+                                            //                 listViewLength -
+                                            //                     increment;
+                                            //           });
+                                            //         },
+                                            //         child: Icon(
+                                            //           Icons.delete_outline,
+                                            //           color: Primary.primary,
+                                            //         ),
+                                            //       ),
+                                            //     ),
+                                            //   ],
+                                            // ),
+                                          ),
+                                        ),
+                                        Row(
+                                          children: [
+                                            ReusableAddCard(
+                                              text: 'item'.tr,
+                                              onTap: () {
+                                                if (transferCont
+                                                        .transferToIdInTransferOut ==
+                                                    '') {
+                                                  CommonWidgets.snackBar(
+                                                      'error',
+                                                      'you must choose warehouses first');
+                                                } else if (transferCont
+                                                    .productsNames.isEmpty) {
+                                                  CommonWidgets.snackBar(
+                                                      'error',
+                                                      'The warehouse is empty. You must fill the warehouse with products first');
+                                                } else {
+                                                  addNewItem();
+                                                }
+                                              },
+                                            ),
+                                            gapW32,
+                                            ReusableAddCard(
+                                              text: 'image'.tr,
+                                              onTap: () {
+                                                // addNewImage();
+                                              },
+                                            ),
+                                            gapW32,
+                                            ReusableAddCard(
+                                              text: 'note'.tr,
+                                              onTap: () {
+                                                // addNewNote();
+                                              },
+                                            ),
+                                          ],
+                                        )
+                                      ],
+                                    ),
+                                  ),
+                                  gapH28,
+                                  Row(
+                                    mainAxisAlignment: MainAxisAlignment.end,
+                                    children: [
+                                      ReusableButtonWithColor(
+                                        width:
+                                            MediaQuery.of(context).size.width *
+                                                0.15,
+                                        height: 45,
+                                        isDisable: transferCont
+                                            .rowsInListViewInTransferOut
+                                            .isEmpty,
+                                        onTapFunction: () async {
+                                          bool isThereItemsEmpty = false;
+                                          for (var map in transferCont
+                                              .rowsInListViewInTransferOut) {
+                                            if (map!["itemId"] == '' ||
+                                                map!["qty"] == '' ||
+                                                map!["qty"] == '0') {
+                                              setState(() {
+                                                isThereItemsEmpty = true;
+                                              });
+                                              break;
+                                            }
+                                          }
+                                          if (transferController
+                                                  .transferToIdInTransferOut ==
+                                              transferController
+                                                  .transferFromIdInTransferOut) {
+                                            CommonWidgets.snackBar('error',
+                                                'The source warehouse  must not be the same as destination warehouse');
+                                          } else if (isThereItemsEmpty) {
+                                            CommonWidgets.snackBar('error',
+                                                'check all order lines and enter the required fields');
+                                          } else {
+                                            var res = await addTransferOut(
+                                                transferController
+                                                    .transferToIdInTransferOut,
+                                                transferController
+                                                    .transferFromIdInTransferOut,
+                                                refController.text,
+                                                '',
+                                                dateController.text,
+                                                transferController
+                                                    .rowsInListViewInTransferOut);
+                                            if (res['success'] == true) {
+                                              CommonWidgets.snackBar(
+                                                  'Success', res['message']);
+                                              transferController
+                                                  .getAllTransactionsFromBack();
+                                              homeController.selectedTab.value =
+                                                  'transfers';
+                                            } else {
+                                              CommonWidgets.snackBar('error',
+                                                  res['message'] ?? 'error'.tr);
+                                            }
+                                          }
+                                        },
+                                        btnText: 'submit'.tr,
+                                      ),
+                                    ],
+                                  )
+                                ],
+                              )
+                            : const SizedBox(),
+                        gapH40,
+                      ],
+                    ),
+                    // ),
+                  ],
+                ),
+              ),
+            );
+          })
+        : const CircularProgressIndicator();
+  }
+
+  Widget _buildTabChipItem(String name, int index) {
+    return GestureDetector(
+      onTap: () {
+        setState(() {
+          selectedTabIndex = index;
+        });
+      },
+      child: ClipPath(
+        clipper: const ShapeBorderClipper(
+            shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.only(
+                    topLeft: Radius.circular(9),
+                    topRight: Radius.circular(9)))),
+        child: Container(
+          width: name.length * 10, // MediaQuery.of(context).size.width * 0.09,
+          height: MediaQuery.of(context).size.height * 0.07,
+          decoration: BoxDecoration(
+              color: selectedTabIndex == index ? Primary.p20 : Colors.white,
+              border: selectedTabIndex == index
+                  ? Border(
+                      top: BorderSide(color: Primary.primary, width: 3),
+                    )
+                  : null,
+              boxShadow: [
+                BoxShadow(
+                  color: Colors.grey.withAlpha((0.5 * 255).toInt()),
+                  spreadRadius: 9,
+                  blurRadius: 9,
+                  // offset: Offset(0, 3),
+                )
+              ]),
+          child: Center(
+            child: Text(
+              name.tr,
+              style: TextStyle(
+                  fontWeight: FontWeight.bold, color: Primary.primary),
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+
+  int transferOutCounter = 0;
+  addNewItem() {
+    transferOutCounter += 1;
+    transferController
+        .incrementListViewLengthInTransferOut(transferController.increment);
+    // int index=transferOutCounter;
+    // Widget p = ReusableItemRow(index:index);
+    // transferController.addToOrderLinesInTransferOutList('$index',p);
+    // transferController.addToItemsListInTransferOut('$index',
+    //     {
+    //       'itemId':'',
+    //       'replenishedQty':'',
+    //       'replenishedQtyPackageId':'',
+    //       'note':'',
+    //     });
+    var p = {
+      'itemId': '',
+      'itemName': '',
+      'mainDescription': '',
+      'transferredQty': '',
+      'transferredQtyPackageName': '',
+      'qtyOnHandPackages': '0',
+      'qtyOnHandPackagesInSource': '0',
+      'productsPackages': <String>[],
+    };
+    transferController.addToRowsInListViewInTransferOut(p);
+  }
+
+  // addNewImage() {
+  //   // setState(() {
+  //   // listViewLength = listViewLength + 100;
+  //   transferController.incrementListViewLengthInTransferOut(100);
+  //
+  //   // });
+  //   Widget p = GetBuilder<TransferController>(builder: (cont) {
+  //     return InkWell(
+  //       onTap: () async {
+  //         final image = await ImagePickerWeb.getImageAsBytes();
+  //         setState(() {
+  //           imageFile = image!;
+  //           cont.changeBoolVarInTransferOut(true);
+  //           cont.increaseImageSpaceInTransferOut(90);
+  //           // listViewLength = listViewLength + (cont.imageSpaceHeightInTransferOut) + 10;
+  //           transferController.incrementListViewLengthInTransferOut(
+  //               (cont.imageSpaceHeightInTransferOut) + 10);
+  //         });
+  //       },
+  //       child: Container(
+  //         margin: const EdgeInsets.symmetric(vertical: 5, horizontal: 5),
+  //         child: DottedBorder(
+  //           dashPattern: const [10, 10],
+  //           color: Others.borderColor,
+  //           radius: const Radius.circular(9),
+  //           child: SizedBox(
+  //             width: MediaQuery.of(context).size.width * 0.63,
+  //             height: cont.imageSpaceHeightInTransferOut,
+  //             child: cont.imageAvailableInTransferOut
+  //                 ? Row(
+  //                     mainAxisAlignment: MainAxisAlignment.start,
+  //                     children: [
+  //                       Image.memory(
+  //                         imageFile,
+  //                         height: cont.imageSpaceHeightInTransferOut,
+  //                       ),
+  //                     ],
+  //                   )
+  //                 : Row(
+  //                     mainAxisAlignment: MainAxisAlignment.start,
+  //                     crossAxisAlignment: CrossAxisAlignment.center,
+  //                     children: [
+  //                       gapW20,
+  //                       Icon(Icons.cloud_upload_outlined,
+  //                           color: Others.iconColor, size: 32),
+  //                       gapW20,
+  //                       Text(
+  //                         'drag_drop_image'.tr,
+  //                         style: TextStyle(color: TypographyColor.textTable),
+  //                       ),
+  //                       Text(
+  //                         'browse'.tr,
+  //                         style: TextStyle(color: Primary.primary),
+  //                       ),
+  //                     ],
+  //                   ),
+  //           ),
+  //         ),
+  //       ),
+  //     );
+  //   });
+  //   int index = transferController.orderLinesInTransferOutList.length + 1;
+  //   transferController.addToOrderLinesInTransferOutList('$index', p);
+  // }
+
+  addNewNote() {
+    // setState(() {
+    //   listViewLength = listViewLength + increment;
+    // });
+    transferController
+        .incrementListViewLengthInTransferOut(transferController.increment);
+    Widget p = Container(
+      width: MediaQuery.of(context).size.width * 0.63,
+      margin: const EdgeInsets.symmetric(vertical: 5, horizontal: 10),
+      child: ReusableTextField(
+        textEditingController: TextEditingController(), //todo
+        isPasswordField: false,
+        hint: 'note'.tr,
+        onChangedFunc: (val) {},
+        validationFunc: (val) {},
+      ),
+    );
+    int index = transferController.orderLinesInTransferOutList.length + 1;
+    transferController.addToOrderLinesInTransferOutList('$index', p);
+  }
+
+  List<Step> getSteps() => [
+        Step(
+            title: const Text(''),
+            content: Container(
+                //page
+                ),
+            isActive: currentStep >= 0),
+        Step(
+            title: const Text(''),
+            content: Container(),
+            isActive: currentStep >= 1),
+        Step(
+            title: const Text(''),
+            content: Container(),
+            isActive: currentStep >= 2),
+      ];
+}
+
+class ReusableItemRow extends StatefulWidget {
+  const ReusableItemRow({super.key, required this.index, required this.info});
+  final int index;
+  final Map info;
+  @override
+  State<ReusableItemRow> createState() => _ReusableItemRowState();
+}
+
+class _ReusableItemRowState extends State<ReusableItemRow> {
+  String qty = '0';
+  // disc = '',
+  // result = '0',
+  // qtyInSource = '0',
+  // qtyInDes = '0',
+  // package = '';
+  TextEditingController qtyController = TextEditingController();
+  TextEditingController productController = TextEditingController();
+  TextEditingController packageController = TextEditingController();
+  final TransferController transferController = Get.find();
+  List<String> productsPackages = [];
+  String selectedPackage = '';
+  String selectedItemId = '';
+  bool isDataFetched = false;
+  // String pro = '';
+  String defaultTransactionPackageType = '';
+  getQTyOfItemInSourceWarehouseFromBack() async {
+    var p = await getQTyOfItemInWarehouse(
+        selectedItemId, transferController.transferFromIdInTransferOut);
+    if ('$p' != '[]') {
+      setState(() {
+        // disc = p['item']['mainDescription'] ?? '';
+        // qtyInSource =
+        //     p['qtyOnHandPackages'] ?? '0 ${p['item']['packageUnitName'] ?? ''}';
+        if (p['item']['packageUnitName'] != null) {
+          productsPackages.add(p['item']['packageUnitName']);
+        }
+        if (p['item']['packageSetName'] != null) {
+          productsPackages.add(p['item']['packageSetName']);
+        }
+        if (p['item']['packageSupersetName'] != null) {
+          productsPackages.add(p['item']['packageSupersetName']);
+        }
+        if (p['item']['packagePaletteName'] != null) {
+          productsPackages.add(p['item']['packagePaletteName']);
+        }
+        if (p['item']['packageContainerName'] != null) {
+          productsPackages.add(p['item']['packageContainerName']);
+        }
+        defaultTransactionPackageType =
+            '${p['item']['defaultTransactionPackageType'] ?? '1'}';
+        // packageController.text=defaultTransactionPackageType;
+        // transferController.setPackageNameInTransferOut(widget.index, packageController.text);
+        if (defaultTransactionPackageType == '1') {
+          packageController.text = p['item']['packageUnitName'];
+        } else if (defaultTransactionPackageType == '2') {
+          packageController.text = p['item']['packageSetName'];
+        } else if (defaultTransactionPackageType == '3') {
+          packageController.text = p['item']['packageSupersetName'];
+        } else if (defaultTransactionPackageType == '4') {
+          packageController.text = p['item']['packagePaletteName'];
+        } else if (defaultTransactionPackageType == '5') {
+          packageController.text = p['item']['packageContainerName'];
+        }
+        transferController.setPackageNameInTransferOut(
+            widget.index, packageController.text);
+        transferController.setProductsPackagesInTransferOut(
+            widget.index, productsPackages);
+        transferController.setItemDescriptionInTransferOut(
+            widget.index, p['item']['mainDescription'] ?? '');
+        transferController.setQtyOnHandPackagesInSourceInTransferOut(
+            widget.index,
+            p['qtyOnHandPackages'] ??
+                '0 ${p['item']['packageUnitName'] ?? ''}');
+        isDataFetched = true;
+      });
+    }
+  }
+
+  getQTyOfItemInDesWarehouseFromBack() async {
+    var p = await getQTyOfItemInWarehouse(
+        selectedItemId, transferController.transferToIdInTransferOut);
+    if ('$p' != '[]') {
+      transferController.setQtyOnHandPackagesTransferOut(widget.index,
+          p['qtyOnHandPackages'] ?? '0 ${p['item']['packageUnitName'] ?? ''}');
+      setState(() {
+        isDataFetched = true;
+      });
+    }
+  }
+
+  final _formKey = GlobalKey<FormState>();
+
+  @override
+  void initState() {
+    qtyController.text = transferController
+        .rowsInListViewInTransferOut[widget.index]['transferredQty'];
+    // transferController.isSubmitAndPreviewClicked=false;
+    super.initState();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return GetBuilder<TransferController>(builder: (cont) {
+      packageController.text = cont.rowsInListViewInTransferOut[widget.index]
+          ['transferredQtyPackageName'];
+      productController.text = cont.rowsInListViewInTransferOut[widget.index]
+          ['itemName']; 
+
+      return Container(
+        // width: MediaQuery.of(context).size.width * 0.63,
+        margin: const EdgeInsets.symmetric(
+          vertical: 5,
+        ),
+        child: Form(
+          key: _formKey,
+          child: Row(
+            mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+            children: [
+              // Container(
+              //   width: MediaQuery.of(context).size.width * 0.02,
+              //   height: 20,
+              //   margin: const EdgeInsets.symmetric(vertical: 15),
+              //   decoration: const BoxDecoration(
+              //     image: DecorationImage(
+              //       image: AssetImage('assets/images/newRow.png'),
+              //       fit: BoxFit.contain,
+              //     ),
+              //   ),
+              // ),
+              DropdownMenu<String>(
+                width: MediaQuery.of(context).size.width * 0.12,
+                // requestFocusOnTap: false,
+                enableSearch: true,
+                controller: productController,
+                hintText: '${'search'.tr}...',
+                inputDecorationTheme: InputDecorationTheme(
+                  // filled: true,
+                  hintStyle: const TextStyle(fontStyle: FontStyle.italic),
+                  contentPadding: const EdgeInsets.fromLTRB(20, 0, 25, 5),
+                  // outlineBorder: BorderSide(color: Colors.black,),
+                  enabledBorder: OutlineInputBorder(
+                    borderSide: BorderSide(
+                        color: Primary.primary.withAlpha((0.2 * 255).toInt()), width: 1),
+                    borderRadius: const BorderRadius.all(Radius.circular(9)),
+                  ),
+                  focusedBorder: OutlineInputBorder(
+                    borderSide: BorderSide(
+                        color: Primary.primary.withAlpha((0.4 * 255).toInt()), width: 2),
+                    borderRadius: const BorderRadius.all(Radius.circular(9)),
+                  ),
+                ),
+                // menuStyle: ,
+                menuHeight: 250,
+                dropdownMenuEntries: cont.productsNames
+                    .map<DropdownMenuEntry<String>>((String option) {
+                  return DropdownMenuEntry<String>(
+                    value: option,
+                    label: option,
+                  );
+                }).toList(),
+                enableFilter: true,
+                onSelected: (String? value) {
+                  productController.text = value!;
+                  setState(() {
+                    // pro = value;
+                    selectedItemId =
+                        '${cont.productsIds[cont.productsNames.indexOf(value)]}';
+                  });
+                  cont.setItemIdInTransferOut(widget.index, selectedItemId);
+                  cont.setItemNameInTransferOut(widget.index, value);
+                  getQTyOfItemInSourceWarehouseFromBack();
+                  getQTyOfItemInDesWarehouseFromBack();
+                },
+              ),
+              // DialogDropMenu(
+              //   optionsList: cont.productsNames,
+              //   controller: productController,
+              //   text: '',
+              //   hint: 'item'.tr,
+              //   rowWidth: MediaQuery.of(context).size.width * 0.12,
+              //   textFieldWidth: MediaQuery.of(context).size.width * 0.12,
+              //   onSelected: (value) {
+              //     productController.text=value;
+              //     setState(() {
+              //       // pro = value;
+              //       selectedItemId =
+              //           '${cont.productsIds[cont.productsNames.indexOf(value)]}';
+              //     });
+              //     cont.setItemIdInTransferOut(widget.index, selectedItemId);
+              //     cont.setItemNameInTransferOut(widget.index, value);
+              //     getQTyOfItemInSourceWarehouseFromBack();
+              //     getQTyOfItemInDesWarehouseFromBack();
+              //   },
+              // ),
+              ReusableShowInfoCard(
+                  text: cont.rowsInListViewInTransferOut[widget.index]
+                      ['mainDescription'],
+                  width: MediaQuery.of(context).size.width * 0.2),
+              ReusableShowInfoCard(
+                  text: cont.rowsInListViewInTransferOut[widget.index]
+                      ['qtyOnHandPackagesInSource'],
+                  width: MediaQuery.of(context).size.width * 0.15),
+              ReusableShowInfoCard(
+                  text: cont.rowsInListViewInTransferOut[widget.index]
+                      ['qtyOnHandPackages'],
+                  width: MediaQuery.of(context).size.width * 0.15),
+              SizedBox(
+                  width: MediaQuery.of(context).size.width * 0.1,
+                  child: ReusableNumberField(
+                    textEditingController: qtyController,
+                    isPasswordField: false,
+                    isCentered: true,
+                    hint: '0',
+                    onChangedFunc: (val) {
+                      setState(() {
+                        qty = val;
+                      });
+                      _formKey.currentState!.validate();
+                      cont.setEnteredQtyInTransferOut(widget.index, qty);
+                    },
+                    validationFunc: (String? value) {
+                      if (value!.isEmpty || double.parse(value) <= 0) {
+                        return 'must be >0';
+                      }
+                      return null;
+                    },
+                  )),
+              DialogDropMenu(
+                optionsList: cont.rowsInListViewInTransferOut[widget.index]
+                    ['productsPackages'],
+                text: '',
+                hint: '',
+                controller: packageController,
+                rowWidth: MediaQuery.of(context).size.width * 0.1,
+                textFieldWidth: MediaQuery.of(context).size.width * 0.1,
+                onSelected: (value) {
+                  cont.setPackageNameInTransferOut(widget.index, value);
+                  setState(() {
+                    selectedPackage = value;
+                  });
+                },
+              ),
+              SizedBox(
+                width: MediaQuery.of(context).size.width * 0.04,
+                child: const ReusableMore(
+                  itemsList: [],
+                ),
+              ),
+              SizedBox(
+                width: MediaQuery.of(context).size.width * 0.04,
+                child: InkWell(
+                  onTap: () {
+                    // setState(() {
+                    // cont.removeFromOrderLinesInTransferOutList('${widget.index}');
+                    // cont.removeFromItemsListInTransferOut('${widget.index}');
+                    transferController.decrementListViewLengthInTransferOut(
+                        transferController.increment);
+                    transferController
+                        .removeFromRowsInListViewInTransferOut(widget.index);
+                    // });
+                  },
+                  child: Icon(
+                    Icons.delete_outline,
+                    color: Primary.primary,
+                  ),
+                ),
+              ),
+            ],
+          ),
+        ),
+      );
+    });
+  }
+}

@@ -1,0 +1,33 @@
+import 'package:http/http.dart' as http;
+import 'dart:convert';
+import '../../Locale_Memory/save_user_info_locally.dart';
+import '../../const/urls.dart';
+
+
+Future getAllOrders(String search,String filter) async {
+  // print('searcheee $search');
+  // print('searcheee $filter');
+  final uri = Uri.parse(kOrdersUrl).replace(queryParameters: {
+    'search': search,
+    'searchByStatus': filter,
+    'isPaginated':'0',
+    // 'cashCustomers':'1',
+  });
+  String token = await getAccessTokenFromPref();
+  var response = await http.get(
+    uri,
+    headers: {
+      "Accept": "application/json",
+      "Authorization": "Bearer $token"
+    },
+  );
+
+  var p = json.decode(response.body);
+  // print('odre $p');
+  if(response.statusCode==200) {
+    return p['data'];
+  }else {
+    return [];
+  }
+}
+
