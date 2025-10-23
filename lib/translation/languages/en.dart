@@ -460,5 +460,5 @@ Map<String, String> en = {
   "add_new_contact": "Add new contact",
   'add_new_technician':'Add New Technician',
   'client_code':'Client Code',
-
+'select_car':'Select Car'
 };

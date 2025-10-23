@@ -252,6 +252,7 @@ class _SignFormState extends State<SignForm> {
                               res['data']['user']['company']['has_garage']==true?'1':'0'
                             //res['data']['user']['latestSession']==null || '${res['data']['user']['latestSession']}'=='[]'? '' : '${res['data']['user']['latestSession']['id']}'
                           );
+                          homeController.setIsItGarage(res['data']['user']['company']['has_garage']==true);
                           // print('object');
                           if(res['data']['companySettings'].isNotEmpty){
                             // print('object');print('${res['data']['companySettings']['companySubjectToVat']}');

@@ -380,7 +380,8 @@ class _PaymentScreenState extends State<PaymentScreen> {
                                               : clientController
                                               .selectedCustomerIdWithOk,
                                           cashTrayId,
-                                            productController.totalDiscountAsPercent.toString()
+                                            productController.totalDiscountAsPercent.toString(),
+                                            clientController.selectedCarId
                                         );
                                         // Get.back();
                                         if (parkRes != 'error') {
@@ -415,7 +416,9 @@ class _PaymentScreenState extends State<PaymentScreen> {
                                                   ? ''
                                                   : clientController
                                                       .selectedCustomerIdWithOk,
-                                              currentSessionId);
+                                              currentSessionId,
+                                              clientController.selectedCarId
+                                          );
                                           Get.back();
                                           if (p['success'] == true) {
                                             Get.back();
@@ -493,7 +496,8 @@ class _PaymentScreenState extends State<PaymentScreen> {
                                                   ? ''
                                                   : clientController
                                                       .selectedCustomerIdWithOk,
-                                              currentSessionId);
+                                              currentSessionId,
+                                              clientController.selectedCarId);
                                           Get.back();
                                           if (p['success'] == true) {
                                             Get.back();

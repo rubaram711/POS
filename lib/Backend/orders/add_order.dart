@@ -20,7 +20,8 @@ Future addOrder(
     bool isDiscountIsGranted,
     String clientId,
     String cashTrayId,
-    String totalDiscountAsPercent
+    String totalDiscountAsPercent,
+    String carId
 ) async {
   // print('go in $discountTypeId');
   // // print('go in $isDiscountIsGranted');
@@ -50,6 +51,7 @@ Map<String,dynamic> body={
   "posCurrencyId": posCurrencyId,
   "primaryCurrencyRate": '1',//productController.primaryCurrencyLatestRate,
   "posCurrencyRate": productController.posCurrencyLatestRate,
+  'carId':carId
 };
 if(discountTypeId=='-2'){
   body.addAll({
@@ -57,6 +59,7 @@ if(discountTypeId=='-2'){
     'posCurrencyCustomDiscountValue':otherCurrencyDiscountValue,
   });
 }
+
   FormData formData = FormData.fromMap(body);
 
   var itemsKeys = items.keys.toList();

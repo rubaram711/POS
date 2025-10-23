@@ -13,7 +13,7 @@ class ClientController extends GetxController {
   String selectedCustomerId = '-1';
   String selectedCustomerIdWithOk = '-1';
   Map selectedCustomerObject = {};
-
+String selectedCarId='';
   getAllClientsFromBack() async {
     customersList = [];
     customersNamesList = [];
@@ -58,6 +58,11 @@ class ClientController extends GetxController {
       selectedCustomerId = '${order['client']['id']}';
       selectedCustomerIdWithOk = '${order['client']['id']}';
       selectedCustomerObject = order['client'];
+      if('${order['car']??''}'!='[]'){
+        selectedCarId='${order['car']['id']}';
+        selectedCustomerCar=order['car'];
+        selectedCarBeforeOK=order['car'];
+      }
     }
   }
 
@@ -174,39 +179,46 @@ class ClientController extends GetxController {
 
   //cars
   List carsListForSelectedCustomer = [
-    {
-      "odometer": '25000',
-      "registration": "ABC123",
-      "year": '2020',
-      "color": "Red",
-      "model": "Corolla",
-      "brand": "Toyota",
-      "chassis_no": "CH123456",
-      "rating": '4.5',
-      "comment": "Good condition",
-      "car_fax": "Clean",
-      'technician': 'ahmad',
-    },
-    {
-      "odometer": '25000',
-      "registration": "ABC123",
-      "year": '2020',
-      "color": "blue",
-      "model": "Corolla",
-      "brand": "Toyota",
-      "chassis_no": "CH124444",
-      "rating": '3',
-      "comment": "Good condition",
-      "car_fax": "Clean",
-      'technician': 'ahmad',
-    },
+    // {
+    //   "odometer": '25000',
+    //   "registration": "ABC123",
+    //   "year": '2020',
+    //   "color": "Red",
+    //   "model": "Corolla",
+    //   "brand": "Toyota",
+    //   "chassis_no": "CH123456",
+    //   "rating": '4.5',
+    //   "comment": "Good condition",
+    //   "car_fax": "Clean",
+    //   'technician': 'ahmad',
+    // },
+    // {
+    //   "odometer": '25000',
+    //   "registration": "ABC123",
+    //   "year": '2020',
+    //   "color": "blue",
+    //   "model": "Corolla",
+    //   "brand": "Toyota",
+    //   "chassis_no": "CH124444",
+    //   "rating": '3',
+    //   "comment": "Good condition",
+    //   "car_fax": "Clean",
+    //   'technician': 'ahmad',
+    // },
   ];
   setSelectedCustomerCarsList(List list) {
     carsListForSelectedCustomer = list;
     update();
   }
 
+  Map selectedCarBeforeOK={};
+
+  setSelectedCustomerCarBeforeOk(Map val) {
+    selectedCarBeforeOK = val;
+    update();
+  }
   setSelectedCustomerCar(Map val) {
+    selectedCarId='${val['id']}';
     selectedCustomerCar = val;
     update();
   }

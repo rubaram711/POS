@@ -17,7 +17,8 @@ Future finishOrder(
     String usdRemaining,
     String otherCurrencyRemaining,
     String clientId,
-    String sessionId
+    String sessionId,
+    String carId
     ) async {
   // print('orderId $orderId');
   // print('cashTrayId $cashTrayId');
@@ -39,6 +40,7 @@ ProductController productController=Get.find();
     'cashTrayId':cashTrayId,
     'sessionId':sessionId,
     'roleName':roleName,
+    'carId':carId,
   });
 
   for (int i = 0; i < cashingMethods.length; i++) {

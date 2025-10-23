@@ -139,7 +139,8 @@ class _EnterNoteDialogState extends State<EnterNoteDialog> {
                             : clientController
                             .selectedCustomerIdWithOk,
                         cashTrayId,
-                          productController.totalDiscountAsPercent.toString()
+                          productController.totalDiscountAsPercent.toString(),
+                          clientController.selectedCarId
                       );
                       Get.back();
                       if (p != 'error') {

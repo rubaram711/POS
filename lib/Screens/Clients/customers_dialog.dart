@@ -173,17 +173,18 @@ class _CustomersDialogState
                       children: [
                         InkWell(
                           onTap:cont.selectedCustomerId!='-1'? () {
-                            cont.setSelectedCustomerIdWithOk();
-                            productController.setSelectedDiscountTypeId('-1');
-                            if(!homeController.isItGarage) {
+                            if(!homeController.isItGarage || '${cont.selectedCustomerObject['cars']??''}'=='[]') {
+                              cont.setSelectedCustomerIdWithOk();
+                              productController.setSelectedDiscountTypeId('-1');
                               Get.back();
                             }else {
+                              cont.setSelectedCustomerCarsList(cont.selectedCustomerObject['cars']??const []);
                               showDialog<String>(
                                   context: context,
                                   builder: (BuildContext context) =>
-                                  const AlertDialog(
+                                  AlertDialog(
                                     backgroundColor: Colors.white,
-                                    shape: RoundedRectangleBorder(
+                                    shape: const RoundedRectangleBorder(
                                       borderRadius:
                                       BorderRadius.all(Radius.circular(9)),
                                     ),
@@ -206,7 +207,7 @@ class _CustomersDialogState
                             ),
                             child: Center(
                               child: Text(
-                                'ok'.tr,
+                                homeController.isItGarage && cont.selectedCustomerObject.isNotEmpty && '${cont.selectedCustomerObject['cars']??''}'!='[]'?'select_car'.tr:'ok'.tr,
                                 style: TextStyle(fontSize: 14, color: Primary.p0),
                               ),
                             ),

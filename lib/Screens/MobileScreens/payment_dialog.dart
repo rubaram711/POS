@@ -36,7 +36,7 @@ class _PaymentDialogState extends State<PaymentDialog> {
   PaymentController paymentController = Get.find();
   HomeController homeController = Get.find();
   OrdersController ordersController = Get.find();
-ClientController clientController=Get.find();
+  ClientController clientController = Get.find();
 
   TextEditingController searchInCustomersController = TextEditingController();
   TextEditingController customerPaidController = TextEditingController();
@@ -47,9 +47,9 @@ ClientController clientController=Get.find();
     // authCodeForMasterController.clear();
     // authCodeForVisaController.clear();
     productController.selectedDiscountTypeId = '0';
-    clientController.selectedCustomerIdWithOk='-1';
-    clientController.selectedCustomerObject={};
-    clientController.selectedCustomerId='-1';
+    clientController.selectedCustomerIdWithOk = '-1';
+    clientController.selectedCustomerObject = {};
+    clientController.selectedCustomerId = '-1';
     searchInCustomersController.text = '';
     clientController.getAllClientsFromBack();
     paymentController.isOnAccountSelected = false;
@@ -80,7 +80,7 @@ ClientController clientController=Get.find();
       (m) => '${m['active']}' == "1" && '${m['title']}' == "Cash",
     );
     paymentController.setClickedPaymentMethodeId('${firstActiveMethod['id']}');
-    var ind=paymentController.paymentMethodList.indexOf(firstActiveMethod);
+    var ind = paymentController.paymentMethodList.indexOf(firstActiveMethod);
     paymentController.setClickedPaymentMethodeIndex(ind);
     paymentController.setSelectedCashMethodOption(2);
   }
@@ -156,7 +156,7 @@ ClientController clientController=Get.find();
                                 // menuStyle: ,
                                 menuHeight: 250,
                                 dropdownMenuEntries:
-                                clientCont.customersNamesList
+                                    clientCont.customersNamesList
                                         .map<DropdownMenuEntry<String>>((
                                           String option,
                                         ) {
@@ -171,20 +171,28 @@ ClientController clientController=Get.find();
                                   var index = clientCont.customersNamesList
                                       .indexOf(val!);
                                   clientController.setSelectedCustomerId(
-                                    clientCont.customersIdsList[index].toString(),
+                                    clientCont.customersIdsList[index]
+                                        .toString(),
                                   );
                                   clientController.setSelectedCustomerObject(
                                     clientCont.customersList[index],
                                   );
-                                  productController.setTotalDiscountAsPercent(double.parse('${ clientCont.customersList[index]['grantedDiscount']?? clientCont.customersList[index]['granted_discount']??'0'}'));
+                                  productController.setTotalDiscountAsPercent(
+                                    double.parse(
+                                      '${clientCont.customersList[index]['grantedDiscount'] ?? clientCont.customersList[index]['granted_discount'] ?? '0'}',
+                                    ),
+                                  );
                                   productController.calculateSummary();
-                                  clientController.setSelectedCustomerIdWithOk();
-                                  productController.setSelectedDiscountTypeId('-1');
+                                  clientController
+                                      .setSelectedCustomerIdWithOk();
+                                  productController.setSelectedDiscountTypeId(
+                                    '-1',
+                                  );
                                 },
                               ),
                             ],
                           );
-                        }
+                        },
                       ),
                       Divider(color: Others.divider),
                       gapH10,
@@ -204,7 +212,7 @@ ClientController clientController=Get.find();
                                           '1'
                                       ? '${paymentCont.paymentMethodList[index]['title']}' ==
                                                   'On Account' &&
-                                      clientController
+                                              clientController
                                                       .selectedCustomerIdWithOk !=
                                                   '-1'
                                           ? _cashingMethodCard(
@@ -891,9 +899,7 @@ ClientController clientController=Get.find();
                                     vertical: 14,
                                   ),
                                   shape: RoundedRectangleBorder(
-                                    borderRadius: BorderRadius.circular(
-                                      12,
-                                    ),
+                                    borderRadius: BorderRadius.circular(12),
                                   ),
                                 ),
                               ),
@@ -908,12 +914,15 @@ ClientController clientController=Get.find();
                                                 paymentCont
                                                     .selectedCashingMethodsList
                                                     .isNotEmpty) ||
-                                        clientController
+                                            clientController
                                                     .selectedCustomerIdWithOk !=
                                                 '-1' ||
                                             productController.totalPrice
                                                     .toStringAsFixed(2) ==
-                                                '0.00' || clientController.selectedCustomerIdWithOk != '-1'
+                                                '0.00' ||
+                                            clientController
+                                                    .selectedCustomerIdWithOk !=
+                                                '-1'
                                         ? () async {
                                           {
                                             showDialog<String>(
@@ -1028,14 +1037,17 @@ ClientController clientController=Get.find();
                                                         '-1'
                                                     ? true
                                                     : false,
-                                                  clientController
+                                                clientController
                                                             .selectedCustomerIdWithOk ==
                                                         '-1'
                                                     ? ''
                                                     : clientController
                                                         .selectedCustomerIdWithOk,
                                                 cashTrayId,
-                                                  productController.totalDiscountAsPercent.toString()
+                                                productController
+                                                    .totalDiscountAsPercent
+                                                    .toString(),
+                                                clientController.selectedCarId,
                                               );
                                               // Get.back();
                                               if (parkRes != 'error') {
@@ -1077,6 +1089,8 @@ ClientController clientController=Get.find();
                                                       : clientController
                                                           .selectedCustomerIdWithOk,
                                                   currentSessionId,
+                                                  clientController
+                                                      .selectedCarId,
                                                 );
                                                 Get.back();
                                                 if (p['success'] == true) {
@@ -1195,6 +1209,8 @@ ClientController clientController=Get.find();
                                                       : clientController
                                                           .selectedCustomerIdWithOk,
                                                   currentSessionId,
+                                                  clientController
+                                                      .selectedCarId,
                                                 );
                                                 Get.back();
                                                 if (p['success'] == true) {
@@ -1268,10 +1284,9 @@ ClientController clientController=Get.find();
                     child: CachedNetworkImage(
                       imageUrl:
                           (methodInfo['image'] != null &&
-                              methodInfo['image'].isNotEmpty)
+                                  methodInfo['image'].isNotEmpty)
                               ? '$baseImage${methodInfo['image']}'
-                              :
-                          'https://cdn-icons-png.flaticon.com/512/633/633611.png',
+                              : 'https://cdn-icons-png.flaticon.com/512/633/633611.png',
                       height: 43,
                       width: 43,
                       fit: BoxFit.cover,

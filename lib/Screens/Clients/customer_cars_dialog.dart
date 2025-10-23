@@ -7,6 +7,7 @@ import '../../Controllers/products_controller.dart';
 import '../../Widgets/page_title.dart';
 import '../../Widgets/reusable_btn.dart';
 import '../../Widgets/reusable_text_field.dart';
+import '../../const/Sizes.dart';
 import '../../const/colors.dart';
 
 TextEditingController searchInCarsController = TextEditingController();
@@ -35,16 +36,16 @@ class _CustomersCarsDialogState
     setState(() {
       final lowerQuery = query.toLowerCase();
       List filteredCars = copyFromCarsList.where((car) {
-        return (car["registration"] ?? "").toString().toLowerCase().contains(lowerQuery) ||
-            (car["model"] ?? "").toString().toLowerCase().contains(lowerQuery) ||
-            (car["brand"] ?? "").toString().toLowerCase().contains(lowerQuery) ||
-            (car["color"] ?? "").toString().toLowerCase().contains(lowerQuery) ||
-            (car["chassis_no"] ?? "").toString().toLowerCase().contains(lowerQuery) ||
+        return (car["plate_number"] ?? "").toString().toLowerCase().contains(lowerQuery) ||
+            (car["model_name"] ?? "").toString().toLowerCase().contains(lowerQuery) ||
+            (car["brand_name"] ?? "").toString().toLowerCase().contains(lowerQuery) ||
+            (car["color_name"] ?? "").toString().toLowerCase().contains(lowerQuery) ||
+            (car["chassis_number"] ?? "").toString().toLowerCase().contains(lowerQuery) ||
             (car["comment"] ?? "").toString().toLowerCase().contains(lowerQuery) ||
             (car["car_fax"] ?? "").toString().toLowerCase().contains(lowerQuery) ||
             (car["year"] ?? "").toString().contains(lowerQuery) ||
             (car["odometer"] ?? "").toString().contains(lowerQuery) ||
-            (car["technician"] ?? "").toString().contains(lowerQuery) ||
+            (car["tech_name"] ?? "").toString().contains(lowerQuery) ||
             (car["rating"] ?? "").toString().contains(lowerQuery);
       }).toList();
       clientController.setSelectedCustomerCarsList(filteredCars);
@@ -149,7 +150,8 @@ class _CustomersCarsDialogState
                     itemBuilder: (context, index) => CarCard(
                       info: cont.carsListForSelectedCustomer[index],
                       onCarTapped: (){
-                        cont.setSelectedCustomerCar(cont.carsListForSelectedCustomer[index]);
+                        print('6666 ${cont.carsListForSelectedCustomer[index]}');
+                        cont.setSelectedCustomerCarBeforeOk(cont.carsListForSelectedCustomer[index]);
                       },
                     ),
                     separatorBuilder: (context, index) => const Divider(),
@@ -160,37 +162,35 @@ class _CustomersCarsDialogState
                   mainAxisAlignment: MainAxisAlignment.end,
                   crossAxisAlignment: CrossAxisAlignment.end,
                   children: [
-                    // GetBuilder<ProductController>(
-                    //     builder: (cont) {
-                    //       return InkWell(
-                    //         onTap:cont.selectedCustomerId!='-1'? () {
-                    //           cont.setSelectedCustomerIdWithOk();
-                    //           productController.setSelectedDiscountTypeId('-1');
-                    //             Get.back();
-                    //          }:null,
-                    //         child: Container(
-                    //           width: 100,
-                    //           height: 35,
-                    //           decoration: BoxDecoration(
-                    //             color:cont.selectedCustomerId=='-1'
-                    //                 ? Primary.primary.withAlpha((0.7 * 255).toInt()): Primary.primary,
-                    //             border: Border.all(
-                    //               color:cont.selectedCustomerId=='-1'
-                    //                   ? Primary.primary.withAlpha((0.7 * 255).toInt())
-                    //                   : Primary.p0,
-                    //             ),
-                    //             borderRadius: BorderRadius.circular(9),
-                    //           ),
-                    //           child: Center(
-                    //             child: Text(
-                    //               'ok'.tr,
-                    //               style: TextStyle(fontSize: 14, color: Primary.p0),
-                    //             ),
-                    //           ),
-                    //         ),
-                    //       );
-                    //     }
-                    // ),
+                    InkWell(
+                      onTap:cont.selectedCarBeforeOK.isNotEmpty? () {
+                          cont.setSelectedCustomerIdWithOk();
+                          cont.setSelectedCustomerCar(cont.selectedCarBeforeOK);
+                          productController.setSelectedDiscountTypeId('-1');
+                          Get.back();
+                          Get.back();
+                      }:null,
+                      child: Container(
+                        width: 100,
+                        height: 35,
+                        decoration: BoxDecoration(
+                          color:cont.selectedCustomerId=='-1'
+                              ? Primary.primary.withAlpha((0.7 * 255).toInt()): Primary.primary,
+                          border: Border.all(
+                            color:cont.selectedCustomerId=='-1'
+                                ? Primary.primary.withAlpha((0.7 * 255).toInt())
+                                : Primary.p0,
+                          ),
+                          borderRadius: BorderRadius.circular(9),
+                        ),
+                        child: Center(
+                          child: Text(
+                            'ok'.tr,
+                            style: TextStyle(fontSize: 14, color: Primary.p0),
+                          ),
+                        ),
+                      ),
+                    ),
                     // gapW16,
                     // ReusableButtonWithColor(
                     //     radius: 9,
@@ -205,7 +205,7 @@ class _CustomersCarsDialogState
                     //     },
                     //     width: 100,
                     //     height: 35),
-                    // gapW16,
+                    gapW16,
                     ReusableButtonWithColor(
                         radius: 9,
                         btnText: 'close'.tr,
@@ -256,7 +256,7 @@ class _CarCardState extends State<CarCard> {
               }
             },
             child: Container(
-              color:'${cont.selectedCustomerCar.isNotEmpty?cont.selectedCustomerCar['id']:''}'== '${widget.info['id']}' ? Primary.primary.withAlpha((0.2 * 255).toInt()) :isHovered? Primary.primary.withAlpha((0.2 * 255).toInt()) : Colors.white,
+              color:'${cont.selectedCarBeforeOK.isNotEmpty?cont.selectedCarBeforeOK['id']:''}'== '${widget.info['id']}' ? Primary.primary.withAlpha((0.2 * 255).toInt()) :isHovered? Primary.primary.withAlpha((0.2 * 255).toInt()) : Colors.white,
               child: Padding(
                 padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 15),
                 child: Row(
@@ -265,42 +265,42 @@ class _CarCardState extends State<CarCard> {
                     SizedBox(
                       width: MediaQuery.of(context).size.width * 0.09,
                       child: Text(
-                        widget.info['registration']??'',
+                        '${widget.info['plate_number']??''}',
                         style: const TextStyle(fontWeight: FontWeight.bold),
                       ),
                     ),
                     SizedBox(
                       width: MediaQuery.of(context).size.width * 0.09,
                       child: Text(
-                        widget.info['chassis_no']??'',
+                        '${widget.info['chassis_number']??''}',
                         style: const TextStyle(fontWeight: FontWeight.bold),
                       ),
                     ),
                     SizedBox(
                       width: MediaQuery.of(context).size.width * 0.09,
                       child: Text(
-                        widget.info['car_fax']??'',
+                        '${widget.info['car_fax']??''}',
                         style: const TextStyle(fontWeight: FontWeight.bold),
                       ),
                     ),
                     SizedBox(
                       width: MediaQuery.of(context).size.width * 0.09,
                       child: Text(
-                        widget.info['model']??'',
+                        widget.info['model_name']??'',
                         style: const TextStyle(fontWeight: FontWeight.bold),
                       ),
                     ),
                     SizedBox(
                       width: MediaQuery.of(context).size.width * 0.09,
                       child: Text(
-                        widget.info['brand']??'',
+                        widget.info['brand_name']??'',
                         style: const TextStyle(fontWeight: FontWeight.bold),
                       ),
                     ),
                     SizedBox(
                       width: MediaQuery.of(context).size.width * 0.09,
                       child: Text(
-                        widget.info['color']??'',
+                        widget.info['color_name']??'',
                         style: const TextStyle(fontWeight: FontWeight.bold),
                       ),
                     ),
@@ -314,21 +314,21 @@ class _CarCardState extends State<CarCard> {
                     SizedBox(
                       width: MediaQuery.of(context).size.width * 0.09,
                       child: Text(
-                        widget.info['odometer']??'',
+                        '${widget.info['odometer']??''}',
                         style: const TextStyle(fontWeight: FontWeight.bold),
                       ),
                     ),
                     SizedBox(
                       width: MediaQuery.of(context).size.width * 0.09,
                       child: Text(
-                        widget.info['technician']??'',
+                        widget.info['tech_name']??'',
                         style: const TextStyle(fontWeight: FontWeight.bold),
                       ),
                     ),
                     SizedBox(
                       width: MediaQuery.of(context).size.width * 0.05,
                       child: Text(
-                        widget.info['year']??'',
+                        '${widget.info['year']??''}',
                         style: const TextStyle(fontWeight: FontWeight.bold),
                       ),
                     ),
